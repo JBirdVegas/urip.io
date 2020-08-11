@@ -1,0 +1,4 @@
+geoip2
+requests
+boto3-stubs
+dominate

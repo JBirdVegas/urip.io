@@ -1,0 +1,4 @@
+**/.env
+**/cdk.out
+**/*.iml
+node_modules/
