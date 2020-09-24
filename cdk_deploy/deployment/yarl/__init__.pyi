@@ -1,9 +1,14 @@
 from typing import overload, Any, Tuple, Optional, Mapping, Union, Sequence, Type
-from typing_extensions import TypedDict, Final, final
 import multidict
 from functools import _CacheInfo
+import sys
 
-_QueryVariable = Union[str, int]
+if sys.version_info >= (3, 8):
+    from typing import TypedDict, Final, final
+else:
+    from typing_extensions import TypedDict, Final, final
+
+_QueryVariable = Union[str, int, float]
 _Query = Union[
     None, str, Mapping[str, _QueryVariable], Sequence[Tuple[str, _QueryVariable]]
 ]

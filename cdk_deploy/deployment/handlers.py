@@ -18,21 +18,25 @@ kms_client = session.client('kms')
 
 
 def decrypt_kms_value(ciphertext: str):
-    return kms_client.decrypt(
-        CiphertextBlob=base64.b64decode(ciphertext),
-        KeyId=os.environ.get('kms_key_id'),
-        EncryptionAlgorithm='SYMMETRIC_DEFAULT'
-    ).get('Plaintext').decode('utf8')
+    try:
+        return kms_client.decrypt(
+            CiphertextBlob=base64.b64decode(ciphertext),
+            KeyId=os.environ.get('kms_key_id'),
+            EncryptionAlgorithm='SYMMETRIC_DEFAULT'
+        ).get('Plaintext').decode('utf8')
+    except:
+        return None
 
 
 user_cipher = os.environ.get('geoip_user')
 pass_cipher = os.environ.get('geoip_pass')
 raw_pass = decrypt_kms_value(pass_cipher)
 raw_username = decrypt_kms_value(user_cipher)
-client = Client(raw_username, raw_pass)
+try:
+    client = Client(raw_username, raw_pass)
+except:
+    client = {}
 
-with open("./index.html") as _fd:
-    index_html = _fd.read()
 html_content_type = {
     'Content-Type': 'text/html'
 }
@@ -146,8 +150,13 @@ def geo_handler(event, context):
         }
 
 
+def generateIconBase64() -> str:
+    with open('favicon.png', 'rb') as icon:
+        return f"data:image/png;base64,{base64.b64encode(icon.read()).decode()}"
+
+
 def create_root_html():
-    doc = dominate.document(title='URIP.io')
+    doc = dominate.document(title='URIP.io', )
     script = """
 fetch('https://urip.io/json')
     .then(function (response) {
@@ -164,23 +173,48 @@ fetch('https://urip.io/json')
     .catch(function (error) {
         console.log('Error: ' + error);
     });"""
+    copy_ip_script = """
+function copyIpAddr() {
+    var text = document.getElementById('ipText');
+    console.log(text.value);navigator.clipboard.writeText(text.textContent).then(function() {
+        console.log(`Copied to clipboard urip: ${text.textContent}`);
+    }, function(err) {
+        console.error('Async: Could not copy text: ', err);
+    });
+}
+"""
     with doc.head:
         tags.meta(charset="UTF-8")
+        tags.link(id='favicon', rel='shortcut icon', type='image/png',
+                  href=generateIconBase64())
     with doc.body:
-        with tags.div(
-                style="text-align:center;align-items: center;display: flex;justify-content: center;width: 100vw;height: 100vh"):
-            tags.h1("Looking for URIP address...", id='ipLookingText')
-            tags.h1("URIP address is:", id='foundIp', style='display:none')
+        styles = {
+            'text-align': 'center',
+            'align-items': 'center',
+            'display': 'flex',
+            'white-space': 'pre-wrap',
+            'justify-content': 'center',
+            'width': '100vw',
+            'height': '100vh'
+        }
+        style = ";".join([
+            f"{k}:{v}"
+            for k, v in styles.items()
+        ])
+        with tags.div(id='divWrapper', style=style):
+            tags.h2("Looking for URIP address...", id='ipLookingText')
+            tags.h2("URIP address is:", id='foundIp', style='display:none')
             tags.br()
-            tags.h1(id='ipText')
+            tags.h2(id='ipText', onclick='copyIpAddr()')
 
         tags.script(script)
+        tags.script(copy_ip_script)
 
     return doc.render(pretty=True)
 
 
 if __name__ == '__main__':
-    print(api_handler({
+    print(root_handler({
         'requestContext': {
             'identity': {
                 'sourceIp': '172.217.4.46'

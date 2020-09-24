@@ -2,3 +2,5 @@
 **/cdk.out
 **/*.iml
 node_modules/
+**/__pycache__/
+**/deployment/

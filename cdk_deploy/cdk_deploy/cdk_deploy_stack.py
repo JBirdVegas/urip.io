@@ -4,7 +4,6 @@ import shutil
 import subprocess
 
 from aws_cdk import (core,
-                     aws_ec2 as ec2,
                      aws_s3 as s3,
                      aws_lambda as lambda_,
                      aws_apigateway as apigateway,
@@ -30,7 +29,9 @@ class CdkDeployStack(core.Stack):
         key = kms.Key(self, 'key',
                       alias=f'{_domain_name.replace(".", "_")}-key',
                       description='Encryption key for urip.io apis')
-        vpc = ec2.Vpc(self, 'vpc', vpn_gateway=True)
+        # vpc = ec2.Vpc(self, 'vpc'
+        # , vpn_gateway=True
+        # )
         bucket = s3.Bucket(self, "api_code_bucket",
                            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
                            encryption=s3.BucketEncryption.KMS,
@@ -39,9 +40,10 @@ class CdkDeployStack(core.Stack):
         principal = iam.CompositePrincipal(iam.ServicePrincipal("lambda.amazonaws.com"),
                                            iam.ServicePrincipal('apigateway.amazonaws.com'))
         role = iam.Role(self, 'role', assumed_by=principal)
-        security_group = ec2.SecurityGroup(self, 'sg',
-                                           allow_all_outbound=True,
-                                           vpc=vpc)
+        # security_group = ec2.SecurityGroup(self, 'sg',
+        #                                    allow_all_outbound=True,
+        #                                    vpc=vpc
+        # )
         role.add_to_policy(iam.PolicyStatement(actions=[
             'ec2:CreateNetworkInterface',
             'ec2:DescribeNetworkInterfaces',
@@ -77,27 +79,27 @@ class CdkDeployStack(core.Stack):
             code=lambda_.Code.asset(deployment_path),
             function_name='urip-io-root',
             env=env,
-            security_group=security_group,
+            # security_group=security_group,
             role=role,
-            vpc=vpc,
+            # vpc=vpc,
         )
         geo_handler = self.make_lambda_function(
             handler='handlers.geo_handler',
             code=lambda_.Code.asset(deployment_path),
             function_name='urip-io-geo',
             env=env,
-            security_group=security_group,
+            # security_group=security_group,
             role=role,
-            vpc=vpc,
+            # vpc=vpc,
         )
         api_handler = self.make_lambda_function(
             handler='handlers.api_handler',
             code=lambda_.Code.asset(deployment_path),
             function_name='urip-io-apis',
             env=env,
-            security_group=security_group,
+            # security_group=security_group,
             role=role,
-            vpc=vpc,
+            # vpc=vpc,
         )
 
         bucket.grant_read(root_handler)
@@ -190,13 +192,13 @@ class CdkDeployStack(core.Stack):
         core.CfnOutput(self, 'kms_key_id', value=key.key_arn)
         core.CfnOutput(self, 'domain_name', value=a_record.domain_name)
 
-    def make_lambda_function(self, handler, code, function_name, env, vpc, security_group, role):
+    def make_lambda_function(self, handler, code, function_name, env, role):
         return lambda_.Function(self, id=function_name,
                                 runtime=lambda_.Runtime.PYTHON_3_8,
                                 function_name=function_name,
                                 code=code,
                                 handler=handler,
                                 environment=env,
-                                vpc=vpc,
-                                security_group=security_group,
+                                # vpc=vpc,
+                                # security_group=security_group,
                                 role=role)
