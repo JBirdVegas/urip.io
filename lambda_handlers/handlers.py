@@ -51,6 +51,16 @@ _headers = {
 }
 
 
+def favicon_handler(event, context):
+    with open('favicon.png', 'rb') as image:
+        return {
+            'headers': {"Content-Type": "image/png"},
+            'statusCode': 200,
+            'body': base64.b64encode(image.read()),
+            'isBase64Encoded': True
+        }
+
+
 def root_handler(event, context):
     try:
         ident = event.get('requestContext').get('identity')
@@ -185,8 +195,7 @@ function copyIpAddr() {
 """
     with doc.head:
         tags.meta(charset="UTF-8")
-        tags.link(id='favicon', rel='shortcut icon', type='image/png',
-                  href=generateIconBase64())
+        tags.link(id='favicon', rel='shortcut icon', type='image/png', href='favicon.png')
     with doc.body:
         styles = {
             'text-align': 'center',

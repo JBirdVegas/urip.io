@@ -3,4 +3,4 @@
 **/*.iml
 node_modules/
 **/__pycache__/
-**/deployment/
+cdk_deploy/deployment/

@@ -29,9 +29,6 @@ class CdkDeployStack(core.Stack):
         key = kms.Key(self, 'key',
                       alias=f'{_domain_name.replace(".", "_")}-key',
                       description='Encryption key for urip.io apis')
-        # vpc = ec2.Vpc(self, 'vpc'
-        # , vpn_gateway=True
-        # )
         bucket = s3.Bucket(self, "api_code_bucket",
                            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
                            encryption=s3.BucketEncryption.KMS,
@@ -40,10 +37,6 @@ class CdkDeployStack(core.Stack):
         principal = iam.CompositePrincipal(iam.ServicePrincipal("lambda.amazonaws.com"),
                                            iam.ServicePrincipal('apigateway.amazonaws.com'))
         role = iam.Role(self, 'role', assumed_by=principal)
-        # security_group = ec2.SecurityGroup(self, 'sg',
-        #                                    allow_all_outbound=True,
-        #                                    vpc=vpc
-        # )
         role.add_to_policy(iam.PolicyStatement(actions=[
             'ec2:CreateNetworkInterface',
             'ec2:DescribeNetworkInterfaces',
@@ -79,32 +72,36 @@ class CdkDeployStack(core.Stack):
             code=lambda_.Code.asset(deployment_path),
             function_name='urip-io-root',
             env=env,
-            # security_group=security_group,
             role=role,
-            # vpc=vpc,
         )
         geo_handler = self.make_lambda_function(
             handler='handlers.geo_handler',
             code=lambda_.Code.asset(deployment_path),
             function_name='urip-io-geo',
             env=env,
-            # security_group=security_group,
             role=role,
-            # vpc=vpc,
         )
+
         api_handler = self.make_lambda_function(
             handler='handlers.api_handler',
             code=lambda_.Code.asset(deployment_path),
             function_name='urip-io-apis',
             env=env,
-            # security_group=security_group,
             role=role,
-            # vpc=vpc,
+        )
+
+        favicon_handler = self.make_lambda_function(
+            handler='handlers.favicon_handler',
+            code=lambda_.Code.asset(deployment_path),
+            function_name='urip-io-favicon',
+            env=env,
+            role=role,
         )
 
         bucket.grant_read(root_handler)
         bucket.grant_read(geo_handler)
         bucket.grant_read(api_handler)
+        bucket.grant_read(favicon_handler)
 
         zone = route53.HostedZone.from_hosted_zone_attributes(
             self, 'hosted_zone', hosted_zone_id='Z0514506V6L1TV8QIR10', zone_name=_domain_name)
@@ -160,17 +157,20 @@ class CdkDeployStack(core.Stack):
 
         geo_integration = apigateway.LambdaIntegration(geo_handler)
         api_integration = apigateway.LambdaIntegration(api_handler)
+        favicon_integration = apigateway.LambdaIntegration(favicon_handler)
 
         geo_resource = api.root.add_resource('geo')
         json_resource = api.root.add_resource('json')
         xml_resource = api.root.add_resource('xml')
         csv_resource = api.root.add_resource('csv')
+        favicon_resource = api.root.add_resource('favicon.png')
 
         api.root.add_method("GET", root_integration)
         geo_resource.add_method("GET", geo_integration)
         json_resource.add_method('GET', api_integration)
         xml_resource.add_method('GET', api_integration)
         csv_resource.add_method('GET', api_integration)
+        favicon_resource.add_method('GET', favicon_integration)
 
         # add cors
         api.root.add_cors_preflight(**_cors_preflight)
@@ -178,11 +178,13 @@ class CdkDeployStack(core.Stack):
         json_resource.add_cors_preflight(**_cors_preflight)
         xml_resource.add_cors_preflight(**_cors_preflight)
         csv_resource.add_cors_preflight(**_cors_preflight)
+        favicon_resource.add_cors_preflight(**_cors_preflight)
 
         key.grant_encrypt_decrypt(role)
         key.grant_encrypt_decrypt(root_handler)
         key.grant_encrypt_decrypt(geo_handler)
         key.grant_encrypt_decrypt(api_handler)
+        key.grant_encrypt_decrypt(favicon_handler)
 
         a_record = route53.ARecord(self,
                                    'arecord',
@@ -199,6 +201,4 @@ class CdkDeployStack(core.Stack):
                                 code=code,
                                 handler=handler,
                                 environment=env,
-                                # vpc=vpc,
-                                # security_group=security_group,
                                 role=role)
