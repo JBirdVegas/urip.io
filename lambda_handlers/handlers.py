@@ -167,6 +167,14 @@ def generateIconBase64() -> str:
 
 def create_root_html():
     doc = dominate.document(title='URIP.io', )
+    google_tracking_url = "https://www.googletagmanager.com/gtag/js?id=UA-45204923-6"
+    google_tracking = """
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+
+gtag('config', 'UA-45204923-6');
+"""
     script = """
 fetch('https://urip.io/json')
     .then(function (response) {
@@ -196,6 +204,10 @@ function copyIpAddr() {
     with doc.head:
         tags.meta(charset="UTF-8")
         tags.link(id='favicon', rel='shortcut icon', type='image/png', href='favicon.png')
+        tags.script(src=google_tracking_url)
+        tags.script(google_tracking)
+        tags.script(script)
+        tags.script(copy_ip_script)
     with doc.body:
         styles = {
             'text-align': 'center',
@@ -215,9 +227,6 @@ function copyIpAddr() {
             tags.h2("URIP address is:", id='foundIp', style='display:none')
             tags.br()
             tags.h2(id='ipText', onclick='copyIpAddr()')
-
-        tags.script(script)
-        tags.script(copy_ip_script)
 
     return doc.render(pretty=True)
 
